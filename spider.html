@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spider Light Up with Glowing Dots</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;  /* Pitch black background */
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    class Dot {
+      constructor(canvasWidth, canvasHeight) {
+        this.x = Math.random() * canvasWidth;
+        this.y = Math.random() * canvasHeight;
+        this.radius = 2 + Math.random() * 2;
+        this.speedX = (Math.random() - 0.5) * 0.3;
+        this.speedY = (Math.random() - 0.5) * 0.3;
+        this.glowScale = 0; // Initial glow scale
+      }
+
+      update(canvasWidth, canvasHeight) {
+        this.x += this.speedX;
+        this.y += this.speedY;
+
+        if (this.x < 0 || this.x > canvasWidth) this.speedX *= -1;
+        if (this.y < 0 || this.y > canvasHeight) this.speedY *= -1;
+      }
+
+      draw(ctx) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.glowScale * 2})`;  // Increased brightness
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      updateGlow(isLit) {
+        const targetGlowScale = isLit ? 1 : 0; // Target glow scale based on light status
+        // Smooth transition for glow scale
+        this.glowScale += (targetGlowScale - this.glowScale) * 0.1; // 0.1 can be adjusted for speed of transition
+      }
+    }
+
+    class Spider {
+      constructor() {
+        this.x = Math.random() * innerWidth;
+        this.y = Math.random() * innerHeight;
+        this.legOffset = 0;
+      }
+
+      follow(targetX, targetY) {
+        this.x = targetX;
+        this.y = targetY;
+      }
+
+      draw(ctx) {
+        ctx.fillStyle = "#f5a623";  // Bright spider color
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 10, 0, Math.PI * 2); // Body
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y - 14, 8, 0, Math.PI * 2); // Head
+        ctx.fill();
+
+        this.drawLegs(ctx);
+      }
+
+      drawLegs(ctx) {
+        ctx.strokeStyle = "#fff"; // White legs
+        ctx.lineWidth = 2;
+        this.legOffset += 0.04;
+        const legAngles = Array.from({length: 8}, (_, i) => (i * Math.PI) / 4); // 8 legs
+
+        legAngles.forEach((angle) => {
+          const legX = this.x + Math.cos(angle + this.legOffset) * 22;
+          const legY = this.y + Math.sin(angle + this.legOffset) * 22;
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);
+          ctx.lineTo(legX, legY);
+          ctx.stroke();
+        });
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    document.body.appendChild(canvas);
+
+    let dots = [];
+    const maxDist = 120;
+    const dotCount = 400;
+    const spider = new Spider();
+
+    function setup() {
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+      for (let i = 0; i < dotCount; i++) {
+        dots.push(new Dot(canvas.width, canvas.height));
+      }
+      addEventListener("pointermove", (e) => spider.follow(e.clientX, e.clientY));
+      animate();
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = "#000";  // Pitch black background
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawLight() {
+      const lightGradient = ctx.createRadialGradient(spider.x, spider.y, 0, spider.x, spider.y, 300);
+      lightGradient.addColorStop(0, "rgba(255, 255, 255, 0.5)"); // Slightly dimmer center
+      lightGradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Fade to pitch black
+      ctx.fillStyle = lightGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function animate() {
+      drawBackground();
+      drawLight();
+
+      dots.forEach(dot => {
+        dot.update(canvas.width, canvas.height);
+        const distToSpider = Math.hypot(dot.x - spider.x, dot.y - spider.y);
+        const isLit = distToSpider < maxDist; // Check if dot is within light radius
+        dot.updateGlow(isLit); // Update glow scale based on light status
+        dot.draw(ctx); // Draw the dot
+
+        if (isLit) {
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+          ctx.beginPath();
+          ctx.moveTo(dot.x, dot.y);
+          ctx.lineTo(spider.x, spider.y);
+          ctx.stroke();
+        }
+      });
+      spider.draw(ctx);
+      requestAnimationFrame(animate);
+    }
+
+    setup();
+  </script>
+</body>
+</html>
